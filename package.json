@@ -1,0 +1,69 @@
+{
+  "name": "playback",
+  "author": "alex_pavlov",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {
+    "jpeg-js": "^0.3.7"
+  },
+  "pebble": {
+    "displayName": "Playback for Spotify",
+    "uuid": "1c757a48-f5c3-4f59-bd13-5618d6750f73",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "basalt",
+      "diorite",
+      "emery",
+      "flint",
+      "aplite",
+      "gabbro",
+      "chalk"
+    ],
+    "watchapp": {
+      "watchface": false,
+      "iconResourceId": "IMAGE_MENU_ICON"
+    },
+    "capabilities": ["configurable"],
+    "messageKeys": {
+      "ImageWidth": 0,
+      "ImageHeight": 1,
+      "ImageDataSize": 2,
+      "ImageChunksTotal": 3,
+      "ImageChunkIndex": 4,
+      "ImageChunkData": 5,
+      "RequestArtist": 10,
+      "RequestAlbum": 11,
+      "JsReady": 20,
+      "ErrorMsg": 21,
+      "Command": 100,
+      "CommandContext": 101,
+      "TrackTitle": 120,
+      "TrackArtist": 121,
+      "TrackDuration": 123,
+      "TrackElapsed": 124,
+      "TrackIsPlaying": 125,
+      "AuthStatus": 127,
+      "ListType": 140,
+      "ListCount": 141,
+      "ListIndex": 142,
+      "ListItemTitle": 143,
+      "ListItemSubtitle": 144,
+      "ListItemUri": 145,
+      "ListDone": 146
+    },
+    "resources": {
+      "media": [
+        {
+          "menuIcon": true,
+          "type": "bitmap",
+          "name": "IMAGE_MENU_ICON",
+          "file": "icon.png"
+        }
+      ]
+    }
+  }
+}
