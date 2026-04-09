@@ -29,7 +29,7 @@ Control Spotify from your Pebble smartwatch. Browse playlists, artists, albums a
 
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Create a new app
-3. Set [Redirect URI](https://github.com/alex523ap/Playback-for-Spotify/blob/efab8a25782437fd5ffa348742ecea22f6f1f143/src/pkjs/spotify_auth.js#L4)to your config page URL (e.g. `https://yourusername.github.io/playback_config/`)
+3. Set [Redirect URI](https://github.com/alex523ap/Playback-for-Spotify/blob/efab8a25782437fd5ffa348742ecea22f6f1f143/src/pkjs/spotify_auth.js#L4) to your config page URL (e.g. `https://yourusername.github.io/playback_config/`)
 4. Copy your **Client ID**
 
 ### 2. Deploy the Config Page
