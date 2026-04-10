@@ -1,6 +1,9 @@
 // Spotify OAuth - Implicit Grant via Pebble config page
 
 var SPOTIFY_CLIENT_ID = '';
+// If you're forking this repo: host your own copy of the config page
+// (see the playback_config repo) on GitHub Pages and put its URL here.
+// This page is what Spotify redirects back to after the OAuth flow.
 var SPOTIFY_REDIRECT_URI = '';
 var SPOTIFY_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private user-library-read user-library-modify user-follow-read';
 

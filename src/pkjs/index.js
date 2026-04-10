@@ -6,8 +6,43 @@ var pollTimer = null;
 var POLL_INTERVAL = 5000;
 var currentVolume = 50;
 var lastTrackId = null;
+var lastImageUrl = null;
 var listSendInProgress = false;
 var lastFetchedItems = [];
+
+// Target album-art size per platform — used to pick the smallest
+// Spotify image variant that's still big enough to cover the display
+// without upscaling. Smaller source JPEG = less to download, less to
+// decode in jpeg-js (which is the single biggest cost on the phone
+// side).
+function getTargetArtSize() {
+  try {
+    var platform = (Pebble.getActiveWatchInfo().platform || '');
+    if (platform === 'gabbro') return 260;
+    if (platform === 'chalk')  return 180;
+    if (platform === 'emery')  return 200;
+    if (platform === 'basalt') return 168;
+  } catch (e) {}
+  return 168;
+}
+
+// Spotify returns album.images sorted largest-first, usually
+// [640, 300, 64]. Pick the smallest image whose longest side is still
+// >= the target display size; fall back to the largest if none qualify.
+function pickImageUrl(images, target) {
+  if (!images || images.length === 0) return null;
+  var best = null;
+  for (var i = 0; i < images.length; i++) {
+    var img = images[i];
+    var side = Math.max(img.width || 0, img.height || 0);
+    if (side >= target) {
+      if (!best || side < Math.max(best.width || 0, best.height || 0)) {
+        best = img;
+      }
+    }
+  }
+  return (best || images[0]).url;
+}
 
 function noop() {}
 
@@ -46,6 +81,21 @@ function fetchNowPlaying() {
       }
     }
 
+    // Kick off the art download BEFORE we send track metadata over
+    // AppMessage. The HTTP XHR and JPEG decode happen asynchronously on
+    // the phone, so they run in parallel with the watch receiving the
+    // text info and any subsequent BLE traffic. image_transfer itself
+    // de-dupes against lastUrl, and we also skip the whole step if the
+    // album art URL hasn't changed.
+    if (track.album && track.album.images && track.album.images.length > 0) {
+      var imageUrl = pickImageUrl(track.album.images, getTargetArtSize());
+      if (imageUrl && imageUrl !== lastImageUrl && !imageTransfer.isTransferring()) {
+        lastImageUrl = imageUrl;
+        imageTransfer.sendImageFromUrl(imageUrl);
+      }
+    }
+    lastTrackId = track.id;
+
     Pebble.sendAppMessage({
       'TrackTitle': track.name || '',
       'TrackArtist': artistNames.join(', '),
@@ -57,19 +107,6 @@ function fetchNowPlaying() {
     // Update volume tracking
     if (data.device) {
       currentVolume = data.device.volume_percent;
-    }
-
-    // Fetch new album art on track change
-    if (track.id !== lastTrackId) {
-      lastTrackId = track.id;
-      var imageUrl = null;
-      if (track.album && track.album.images && track.album.images.length > 0) {
-        // Prefer 300x300 (index 1), fall back to first available
-        imageUrl = track.album.images[track.album.images.length > 1 ? 1 : 0].url;
-      }
-      if (imageUrl && !imageTransfer.isTransferring()) {
-        imageTransfer.sendImageFromUrl(imageUrl);
-      }
     }
   });
 }
@@ -206,7 +243,12 @@ function formatAlbums(data) {
 function handleCommand(cmd, context) {
   switch (cmd) {
     case 1: // CMD_FETCH_NOW_PLAYING
-      lastTrackId = null; // Force art re-download
+      // Just refresh metadata. Don't wipe the art dedupe keys — the
+      // watch fires this on startup (main.c) AND every time the user
+      // opens the Now Playing menu (menu.c), and clearing the dedupe
+      // made us re-download the same cover on top of the one the poll
+      // loop had just kicked off. If the track actually changed,
+      // fetchNowPlaying's normal URL comparison will catch it.
       fetchNowPlaying();
       break;
     case 2: // CMD_FETCH_PLAYLISTS

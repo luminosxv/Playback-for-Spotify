@@ -148,6 +148,15 @@ static void np_window_load(Window *window) {
   s_np_visible = true;
   ui_init(window);
   window_set_click_config_provider(window, controls_click_config_provider);
+  // Repaint the last-known album art into the freshly created bitmap
+  // layer. Without this, reopening Now Playing for the same track
+  // shows a blank cover until JS happens to push a new URL (e.g. the
+  // user hits next/previous), because the JS side de-dupes on URL and
+  // doesn't retransmit unchanged art.
+  GBitmap *cached = comm_get_cached_art();
+  if (cached) {
+    ui_set_album_art(cached);
+  }
 }
 
 static void np_window_unload(Window *window) {

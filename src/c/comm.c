@@ -269,8 +269,18 @@ void comm_init(CommCallbacks callbacks) {
   app_message_register_outbox_sent(outbox_sent_handler);
   app_message_register_outbox_failed(outbox_failed_handler);
 
+#if defined(PBL_PLATFORM_CHALK)
+  // Chalk has ~49KB free heap and a 180x180x8bit album art bitmap
+  // already costs ~32KB. The max AppMessage buffers (~8KB inbox + ~8KB
+  // outbox) push us over the edge, so trim them: inbox just needs to
+  // hold one 4096-byte image chunk + dict overhead, outbox only ever
+  // carries tiny command messages.
+  uint32_t inbox = 4200;
+  uint32_t outbox = 256;
+#else
   uint32_t inbox = app_message_inbox_size_maximum();
   uint32_t outbox = app_message_outbox_size_maximum();
+#endif
   APP_LOG(APP_LOG_LEVEL_INFO, "AppMessage open: inbox=%lu outbox=%lu",
           (unsigned long)inbox, (unsigned long)outbox);
 
@@ -325,4 +335,8 @@ void comm_send_command(AppCommand cmd, const char *context) {
 
 bool comm_is_js_ready(void) {
   return s_js_ready;
+}
+
+GBitmap *comm_get_cached_art(void) {
+  return s_art_bitmap;
 }

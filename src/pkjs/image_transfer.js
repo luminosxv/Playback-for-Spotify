@@ -1,7 +1,29 @@
 var jpeg = require('jpeg-js');
 
-var CHUNK_SIZE = 4096;
+// Per-platform AppMessage chunk size. The inbox on the watch side is
+// sized to match these (see comm.c), so each chunk is one round-trip
+// over BLE. Bigger chunks = fewer round-trips = much faster transfer
+// of a 260x260 bitmap on gabbro (was 17 chunks at 4096, now ~9 at 7500).
+//   chalk   — 64KB heap, art is 180x180x8bit = 32KB, inbox is kept
+//             small (4200) so the bitmap can fit alongside it.
+//   basalt  — 64KB heap, art is 144x168 rect (~24KB), room for bigger inbox.
+//   emery   — 128KB heap, art ~200x166 (~33KB).
+//   gabbro  — 128KB heap, art 260x260 (~67KB), biggest win from big chunks.
+//   default — keep the old 4096 for B&W platforms.
+function getChunkSize() {
+  try {
+    var info = Pebble.getActiveWatchInfo();
+    var platform = info.platform || '';
+    if (platform === 'chalk')  return 4000;
+    if (platform === 'basalt') return 7500;
+    if (platform === 'emery')  return 7500;
+    if (platform === 'gabbro') return 7500;
+  } catch (e) {}
+  return 4096;
+}
+
 var transferInProgress = false;
+var lastUrl = null;
 
 function isColorPlatform() {
   try {
@@ -140,10 +162,12 @@ function processJpeg(jpegData) {
       if (platform === 'emery') {
         W = 200; H = 228 - 62;
       } else if (platform === 'gabbro') {
-        W = 260; H = 260 / 2; // 50/50 split for round
+        // Full-screen art — the C side now covers the whole display
+        // with the cover and overlays a dithered text band on top.
+        W = 260; H = 260;
         isRound = true;
       } else if (platform === 'chalk') {
-        W = 180; H = 180 / 2; // 50/50 split for round
+        W = 180; H = 180;
         isRound = true;
       }
     } catch (e) {}
@@ -198,6 +222,13 @@ function downloadAndSend(url) {
     console.log('[playback] Transfer in progress, skipping');
     return;
   }
+  // De-dupe: if the same URL was just sent, the art on the watch is
+  // already correct — avoid re-downloading / re-decoding / re-sending.
+  if (url === lastUrl) {
+    console.log('[playback] Art unchanged, skipping download');
+    return;
+  }
+  lastUrl = url;
 
   console.log('[playback] Downloading image');
   var xhr = new XMLHttpRequest();
@@ -225,10 +256,12 @@ function downloadAndSend(url) {
 
 function sendImageToWatch(data, width, height) {
   transferInProgress = true;
-  var totalChunks = Math.ceil(data.length / CHUNK_SIZE);
+  var chunkSize = getChunkSize();
+  var totalChunks = Math.ceil(data.length / chunkSize);
 
   console.log('[playback] Sending: ' + width + 'x' + height +
-              ', ' + data.length + ' bytes, ' + totalChunks + ' chunks');
+              ', ' + data.length + ' bytes, ' + totalChunks +
+              ' chunks of ' + chunkSize);
 
   Pebble.sendAppMessage({
     'ImageWidth': width,
@@ -237,7 +270,7 @@ function sendImageToWatch(data, width, height) {
     'ImageChunksTotal': totalChunks
   }, function() {
     console.log('[playback] Header sent');
-    sendChunk(data, 0, totalChunks);
+    sendChunk(data, 0, totalChunks, chunkSize);
   }, function() {
     console.log('[playback] Header failed');
     transferInProgress = false;
@@ -245,9 +278,9 @@ function sendImageToWatch(data, width, height) {
   });
 }
 
-function sendChunk(data, index, totalChunks) {
-  var start = index * CHUNK_SIZE;
-  var end = Math.min(start + CHUNK_SIZE, data.length);
+function sendChunk(data, index, totalChunks, chunkSize) {
+  var start = index * chunkSize;
+  var end = Math.min(start + chunkSize, data.length);
 
   var chunk = [];
   for (var i = start; i < end; i++) {
@@ -260,7 +293,7 @@ function sendChunk(data, index, totalChunks) {
   }, function() {
     console.log('[playback] Chunk ' + (index + 1) + '/' + totalChunks);
     if (index + 1 < totalChunks) {
-      sendChunk(data, index + 1, totalChunks);
+      sendChunk(data, index + 1, totalChunks, chunkSize);
     } else {
       console.log('[playback] Transfer complete');
       transferInProgress = false;
@@ -273,7 +306,7 @@ function sendChunk(data, index, totalChunks) {
         'ImageChunkData': chunk
       }, function() {
         if (index + 1 < totalChunks) {
-          sendChunk(data, index + 1, totalChunks);
+          sendChunk(data, index + 1, totalChunks, chunkSize);
         } else {
           console.log('[playback] Transfer complete');
           transferInProgress = false;

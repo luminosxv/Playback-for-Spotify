@@ -25,3 +25,7 @@ void comm_init(CommCallbacks callbacks);
 void comm_deinit(void);
 void comm_send_command(AppCommand cmd, const char *context);
 bool comm_is_js_ready(void);
+// Returns the most recently received album art bitmap, or NULL if none
+// has been loaded yet. Used to repaint art into a freshly recreated
+// BitmapLayer when the Now Playing window is reopened.
+GBitmap *comm_get_cached_art(void);
