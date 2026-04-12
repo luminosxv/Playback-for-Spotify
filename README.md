@@ -8,7 +8,7 @@ Control Spotify from your Pebble smartwatch. Browse playlists, artists, albums a
 
 - **Now Playing** — track title, artist, album art, and progress bar
 - **Playback controls** — play/pause, next/previous track
-- **Volume control** — hold UP/DOWN to adjust volume
+- **Volume control** — hold UP/DOWN to adjust volume (currently only while playing on external speakers)
 - **Browse library** — playlists, artists, albums, liked songs
 - **Album art** — full-color on color watches, Floyd-Steinberg dithered on B&W
 - **First-launch tutorial** — quick guide to controls
